@@ -1,0 +1,72 @@
+name: Deploy Solar System to EKS
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: solar-system-cluster
+  DOCKER_REPO: ${{ secrets.DOCKER_USERNAME }}/solar-system
+  NAMESPACE: production
+  REPLICAS: 2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ env.DOCKER_REPO }}:latest
+          ${{ env.DOCKER_REPO }}:${{ github.sha }}
+    
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER }}
+    
+    - name: Create namespace
+      run: |
+        kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+    
+    - name: Create MongoDB Secret
+      run: |
+        kubectl create secret generic mongo-db-creds \
+          --namespace ${{ env.NAMESPACE }} \
+          --from-literal=MONGO_URI=${{ secrets.MONGO_URI }} \
+          --from-literal=MONGO_USERNAME=${{ secrets.MONGO_USERNAME }} \
+          --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
+          --dry-run=client -o yaml | kubectl apply -f -
+    
+    - name: Deploy to EKS
+      run: |
+        sed -i "s|\${NAMESPACE}|${{ env.NAMESPACE }}|g" k8s/*.yaml
+        sed -i "s|\${REPLICAS}|${{ env.REPLICAS }}|g" k8s/deployment.yaml
+        sed -i "s|\${K8S_IMAGE}|${{ env.DOCKER_REPO }}:${{ github.sha }}|g" k8s/deployment.yaml
+        
+        kubectl apply -f k8s/
+    
+    - name: Get LoadBalancer URL
+      run: |
+        sleep 30
+        kubectl get svc -n ${{ env.NAMESPACE }} solar-system \
+          -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
