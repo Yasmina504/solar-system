@@ -65,8 +65,12 @@ jobs:
         
         kubectl apply -f k8s/
     
+    - name: Wait for deployment
+      run: |
+        kubectl rollout status deployment/solar-system -n ${{ env.NAMESPACE }} --timeout=5m
+    
     - name: Get LoadBalancer URL
       run: |
-        sleep 30
+        echo "Application URL:"
         kubectl get svc -n ${{ env.NAMESPACE }} solar-system \
           -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
