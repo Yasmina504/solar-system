@@ -48,18 +48,14 @@ jobs:
       run: |
         kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
     
-        - name: Create or Update MongoDB Secret
-      env:
-        MONGO_URI: ${{ secrets.MONGO_URI }}
-        MONGO_USERNAME: ${{ secrets.MONGO_USERNAME }}
-        MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+    - name: Create or Update MongoDB Secret
       run: |
         kubectl delete secret mongo-db-creds -n ${{ env.NAMESPACE }} --ignore-not-found=true
         kubectl create secret generic mongo-db-creds \
           --namespace ${{ env.NAMESPACE }} \
-          --from-literal=MONGO_URI="$MONGO_URI" \
-          --from-literal=MONGO_USERNAME="$MONGO_USERNAME" \
-          --from-literal=MONGO_PASSWORD="$MONGO_PASSWORD"
+          --from-literal=MONGO_URI=${{ secrets.MONGO_URI }} \
+          --from-literal=MONGO_USERNAME=${{ secrets.MONGO_USERNAME }} \
+          --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
     
     - name: Deploy to EKS
       run: |
