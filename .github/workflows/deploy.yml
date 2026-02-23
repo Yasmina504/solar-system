@@ -74,3 +74,4 @@ jobs:
         echo "Application URL:"
         kubectl get svc -n ${{ env.NAMESPACE }} solar-system \
           -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+#.
