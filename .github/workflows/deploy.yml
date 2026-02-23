@@ -62,7 +62,6 @@ jobs:
         sed -i "s|\${NAMESPACE}|${{ env.NAMESPACE }}|g" k8s/*.yaml
         sed -i "s|\${REPLICAS}|${{ env.REPLICAS }}|g" k8s/deployment.yaml
         sed -i "s|\${K8S_IMAGE}|${{ env.DOCKER_REPO }}:${{ github.sha }}|g" k8s/deployment.yaml
-        
         kubectl apply -f k8s/
     
     - name: Wait for deployment
