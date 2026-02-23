@@ -48,14 +48,14 @@ jobs:
       run: |
         kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
     
-    - name: Create MongoDB Secret
+    - name: Create or Update MongoDB Secret
       run: |
+        kubectl delete secret mongo-db-creds -n ${{ env.NAMESPACE }} --ignore-not-found=true
         kubectl create secret generic mongo-db-creds \
           --namespace ${{ env.NAMESPACE }} \
           --from-literal=MONGO_URI=${{ secrets.MONGO_URI }} \
           --from-literal=MONGO_USERNAME=${{ secrets.MONGO_USERNAME }} \
-          --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
-          --dry-run=client -o yaml | kubectl apply -f -
+          --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }}
     
     - name: Deploy to EKS
       run: |
@@ -74,4 +74,3 @@ jobs:
         echo "Application URL:"
         kubectl get svc -n ${{ env.NAMESPACE }} solar-system \
           -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
-# This is the final working version for Yasmina's project
